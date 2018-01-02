@@ -1,0 +1,322 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "CloudFormation template for static site hosting in AWS",
+  "Parameters" : {
+    "DomainName": {
+      "Type": "String",
+      "Description" : "Name of the domain without www (eg. bbc.com)",
+      "AllowedPattern": "(?!-)[a-zA-Z0-9-.]{1,63}(?<!-)",
+      "ConstraintDescription": "must be a valid DNS zone name."
+    },
+    "AcmCertificateArn": {
+      "Type": "String",
+      "Description" : "Arn of the ACM certificate in us-east region.",
+      "Default": "arn:aws:acm:us-east-1:166058053690:certificate/29ab9632-5f3e-488a-955d-1d61fd217cf0"
+    }
+  },
+  "Mappings" : {
+    "RegionMap": {
+      "us-east-1": {
+        "S3hostedzoneID": "Z3AQBSTGFYJSTF",
+        "websiteendpoint": "s3-website-us-east-1.amazonaws.com"
+      },
+      "us-west-1": {
+        "S3hostedzoneID": "Z2F56UZL2M1ACD",
+        "websiteendpoint": "s3-website-us-west-1.amazonaws.com"
+      },
+      "us-west-2": {
+        "S3hostedzoneID": "Z3BJ6K6RIION7M",
+        "websiteendpoint": "s3-website-us-west-2.amazonaws.com"
+      },
+      "eu-west-1": {
+        "S3hostedzoneID": "Z1BKCTXD74EZPE",
+        "websiteendpoint": "s3-website-eu-west-1.amazonaws.com"
+      },
+      "ap-southeast-1": {
+        "S3hostedzoneID": "Z3O0J2DXBE1FTB",
+        "websiteendpoint": "s3-website-ap-southeast-1.amazonaws.com"
+      },
+      "ap-southeast-2": {
+        "S3hostedzoneID": "Z1WCIGYICN2BYD",
+        "websiteendpoint": "s3-website-ap-southeast-2.amazonaws.com"
+      },
+      "ap-northeast-1": {
+        "S3hostedzoneID": "Z2M4EHUR26P7ZW",
+        "websiteendpoint": "s3-website-ap-northeast-1.amazonaws.com"
+      },
+      "sa-east-1": {
+        "S3hostedzoneID": "Z31GFT0UA1I2HV",
+        "websiteendpoint": "s3-website-sa-east-1.amazonaws.com"
+      }
+    }
+  },
+  "Resources" : {
+    "W3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {
+          "Fn::Join": ["", ["www.", {"Ref": "DomainName"}]]
+        },
+        "AccessControl": "PublicRead",
+        "WebsiteConfiguration": {
+          "IndexDocument": "index.html"
+        }
+      }
+    },
+    "W3BucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "W3Bucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "W3Bucket"
+                    },
+                    "/*"
+                  ]
+                ]
+              },
+              "Principal": "*"
+            }
+          ]
+        }
+      }
+    },
+    "Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {
+          "Ref": "DomainName"
+        },
+        "AccessControl": "BucketOwnerFullControl",
+        "WebsiteConfiguration": {
+          "RedirectAllRequestsTo": {
+            "HostName": {"Ref": "W3Bucket"}
+          }
+        }
+      }
+    },
+    "W3CloudFrontDistribution" : {
+      "DependsOn": "W3Bucket",
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Origins": [
+            {
+              "DomainName": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "www.",
+                    {"Ref": "DomainName"},
+                    ".",
+                    { "Fn::FindInMap" : [ "RegionMap", {"Ref": "AWS::Region"}, "websiteendpoint"] }
+                  ]
+                ]
+              },
+              "Id": "S3Origin-W3Bucket",
+              "CustomOriginConfig": {
+                "HTTPPort": "80",
+                "HTTPSPort": "443",
+                "OriginProtocolPolicy": "http-only"
+              }
+            }
+          ],
+          "Comment": {
+            "Fn::Join": [
+              "",
+              [
+                "www.",
+                {
+                  "Ref": "DomainName"
+                },
+                " - CloudFront Distribution for static site hosting"
+              ]
+            ]
+          },
+          "Enabled": true,
+          "HttpVersion": "http2",
+          "DefaultRootObject": "index.html",
+          "Aliases": [
+            {
+              "Fn::Join": [
+                "",
+                [
+                  "www.",
+                  {
+                    "Ref": "DomainName"
+                  }
+                ]
+              ]
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "AllowedMethods": ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"],
+            "TargetOriginId": "S3Origin-W3Bucket",
+            "Compress" : true,
+            "ForwardedValues": {
+              "QueryString": "true",
+              "Cookies": {
+                "Forward": "none"
+              }
+            },
+            "ViewerProtocolPolicy": "redirect-to-https"
+          },
+          "PriceClass": "PriceClass_All",
+          "ViewerCertificate": {
+            "AcmCertificateArn": {
+              "Ref": "AcmCertificateArn"
+            },
+            "SslSupportMethod": "sni-only"
+          }
+        }
+      }
+    },
+    "CloudFrontDistribution" : {
+      "DependsOn": "Bucket",
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Origins": [
+            {
+              "DomainName": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Ref": "DomainName"
+                    },
+                    ".",
+                    {
+                      "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        "websiteendpoint"
+                      ]
+                    }
+                  ]
+                ]
+              },
+              "Id": "S3Origin-Bucket",
+              "CustomOriginConfig": {
+                "HTTPPort": "80",
+                "HTTPSPort": "443",
+                "OriginProtocolPolicy": "http-only"
+              }
+            }
+          ],
+          "Comment": {
+            "Fn::Join": [
+              " - ",
+              [
+                {
+                  "Ref": "DomainName"
+                },
+                "CloudFront Distribution for static site hosting"
+              ]
+            ]
+          },
+          "Enabled": true,
+          "HttpVersion": "http2",
+          "DefaultRootObject": "index.html",
+          "Aliases": [
+            {
+              "Ref": "DomainName"
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "AllowedMethods": ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"],
+            "TargetOriginId": "S3Origin-Bucket",
+            "Compress" : true,
+            "ForwardedValues": {
+              "QueryString": "true",
+              "Cookies": {
+                "Forward": "none"
+              }
+            },
+            "ViewerProtocolPolicy": "redirect-to-https"
+          },
+          "PriceClass": "PriceClass_All",
+          "ViewerCertificate": {
+            "AcmCertificateArn": {
+              "Ref": "AcmCertificateArn"
+            },
+            "SslSupportMethod": "sni-only"
+          }
+        }
+      }
+    },
+    "RecordSetGroup": {
+      "DependsOn": ["W3CloudFrontDistribution", "CloudFrontDistribution"],
+      "Type": "AWS::Route53::RecordSetGroup",
+      "Properties": {
+        "HostedZoneName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "DomainName"
+              },
+              "."
+            ]
+          ]
+        },
+        "Comment": "Route 53 record sets for CloudFront distributions.",
+        "RecordSets": [
+          {
+            "Name": {
+              "Ref": "DomainName"
+            },
+            "Type": "A",
+            "AliasTarget": {
+              "HostedZoneId": "Z2FDTNDATAQYW2",
+              "DNSName": {
+                "Fn::GetAtt": [
+                  "CloudFrontDistribution",
+                  "DomainName"
+                ]
+              }
+            }
+          },
+          {
+            "Name": {
+              "Fn::Join": [
+                "",
+                [
+                  "www.",
+                  {
+                    "Ref": "DomainName"
+                  }
+                ]
+              ]
+            },
+            "Type": "A",
+            "AliasTarget": {
+              "HostedZoneId": "Z2FDTNDATAQYW2",
+              "DNSName": {
+                "Fn::GetAtt": [
+                  "W3CloudFrontDistribution",
+                  "DomainName"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
