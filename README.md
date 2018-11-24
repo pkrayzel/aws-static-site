@@ -12,6 +12,7 @@ AWS CloudFormation template for static site hosting with AWS S3, AWS CloudFront 
 - Private certificate created and verified for the given domain in AWS Certificate Manager in the same region
 
 **Template parameters**
+- **HostedZoneId** - hosted zone id of the Route 53 hosted zone.
 - **DomainName** - name of the domain without leading www (eg. site.com)
 - **AcmCertificateArn** - ARN of the certificate which will be used for CloudFront distribution and HTTPS
 
@@ -22,7 +23,7 @@ AWS CloudFormation template for static site hosting with AWS S3, AWS CloudFront 
 3. Click on the **Create stack** button
 4. Select **Upload a template to AWS**, choose **static_site.json** and press **Next**.
 5. Put name of your stack (eg. **site-com-static-site**).
-6. Fill in the values for both parameters - **AcmCertificateArn** and **DomainName** and press **Next**.
+6. Fill in all the values for parameters.
 7. Press **Next** on the **Options** page.
 8. Click on the **Create** button. 
 
