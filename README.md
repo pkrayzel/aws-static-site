@@ -12,7 +12,6 @@ AWS CloudFormation template for static site hosting with AWS S3, AWS CloudFront 
 - Private certificate created and verified for the given domain in AWS Certificate Manager in the same region
 
 **Template parameters**
-- **HostedZoneId** - hosted zone id of the Route 53 hosted zone.
 - **DomainName** - name of the domain without leading www (eg. site.com)
 - **AcmCertificateArn** - ARN of the certificate which will be used for CloudFront distribution and HTTPS
 

@@ -2,10 +2,6 @@
   "AWSTemplateFormatVersion" : "2010-09-09",
   "Description" : "CloudFormation template for static site hosting in AWS",
   "Parameters" : {
-    "HostedZoneId": {
-      "Type": "String",
-      "Description": "Id of the hosted zone in AWS Route 53"
-    },
     "DomainName": {
       "Type": "String",
       "Description" : "Name of the domain without www (eg. bbc.com)",
@@ -199,7 +195,7 @@
             },
             "Type": "A",
             "AliasTarget": {
-              "HostedZoneId": { "Ref": "HostedZoneId" },
+              "HostedZoneId": "Z2FDTNDATAQYW2",
               "DNSName": {
                 "Fn::GetAtt": [
                   "W3CloudFrontDistribution",
@@ -222,7 +218,7 @@
             },
             "Type": "A",
             "AliasTarget": {
-              "HostedZoneId": { "Ref": "HostedZoneId" },
+              "HostedZoneId": "Z2FDTNDATAQYW2",
               "DNSName": {
                 "Fn::GetAtt": [
                   "W3CloudFrontDistribution",
