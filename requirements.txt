@@ -1,3 +1,0 @@
-awscli==1.11.172
-boto3==1.5.6
-argparse==1.4.0
